@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from scipy.spatial.distance import squareform, pdist
 from scipy.cluster import hierarchy
+from sklearn.preprocessing import StandardScaler
 
 from typing import List, Union, Tuple
 from numpy.typing import ArrayLike
@@ -12,13 +13,14 @@ class Asw_clustering:
         pass
 
     def create_numerical_df(
-        self, df: pd.DataFrame, dummy_columns: list
+        self, df: pd.DataFrame, dummy_columns: list = None, fields_to_scale: list = None
     ) -> pd.DataFrame:
         """Creates an encoded dataframe for the use in the ASW clustering method.
 
         Args:
             df (pd.DataFrame): data you want to cluster
-            dummy_columns (list): columns you want encoded. All other columns will remain the same
+            dummy_columns (list, optional): columns you want encoded. All other columns will remain the same. Defaults to None.
+            fields_to_scale (list, optional): columns you want to center and scale. All other columns will remain the same. Defaults to None.
 
         Returns:
             pd.DataFrame: the data frame with encodings for specified columns
@@ -27,6 +29,11 @@ class Asw_clustering:
         subset_df = df[dummy_columns]
         keep_df = df.drop(columns=dummy_columns)
         dummy_df = pd.get_dummies(subset_df, dtype=float) * 1 / (2 ** (1 / 2))
+
+        if fields_to_scale:
+            scaler = StandardScaler()
+            for field in fields_to_scale:
+                keep_df[field] = scaler.fit_transform(keep_df[[field]])
 
         return pd.concat([keep_df, dummy_df], axis=1)
 
@@ -184,7 +191,9 @@ class Asw_clustering:
 
         return update_move, max_asw, optimal_assignment
 
-    def transform_data(self, df: pd.DataFrame, fields: list) -> pd.DataFrame:
+    def transform_data(
+        self, df: pd.DataFrame, dummy_columns: list = None, fields_to_scale: list = None
+    ) -> pd.DataFrame:
         """Transforms your data so you can use the clustering methods
 
         Args:
@@ -195,7 +204,7 @@ class Asw_clustering:
             pd.DataFrame: Transformed data
         """
         df = df.copy()
-        dummy_df = self.create_numerical_df(df, fields)
+        dummy_df = self.create_numerical_df(df, dummy_columns, fields_to_scale)
 
         return dummy_df
 
